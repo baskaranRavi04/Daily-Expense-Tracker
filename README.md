@@ -18,3 +18,6 @@ It helps users record, view, and manage their daily expenses.
 - View all expenses
 - Delete expenses
 - Calculate total expenses
+- Monthly Expense Summary
+- Search Expense
+- Category-wise Expense Summary
