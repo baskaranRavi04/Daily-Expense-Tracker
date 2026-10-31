@@ -18,10 +18,26 @@ if (isset($_POST['add'])) {
     }
 }
 
-// Fetch Expenses
-$result = mysqli_query($conn,
-    "SELECT * FROM expenses ORDER BY id DESC"
-);
+// Search Expense
+$search = "";
+
+if (isset($_GET['search'])) {
+
+    $search = mysqli_real_escape_string($conn, $_GET['search']);
+
+    $result = mysqli_query($conn,
+        "SELECT * FROM expenses
+         WHERE title LIKE '%$search%'
+         OR category LIKE '%$search%'
+         ORDER BY id DESC"
+    );
+
+} else {
+
+    $result = mysqli_query($conn,
+        "SELECT * FROM expenses ORDER BY id DESC"
+    );
+}
 
 // Calculate Total Expenses
 $total_result = mysqli_query($conn,
@@ -153,7 +169,27 @@ $monthly_expense = $month_data['monthly_total'] ?? 0;
             flex: 1;
         }
 
+        .search-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .search-form input {
+            flex: 1;
+            margin: 0;
+        }
+
+        .search-form a {
+            background: #777;
+            color: white;
+            padding: 12px 15px;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+
         @media(max-width: 700px) {
+
             .container {
                 width: 100%;
             }
@@ -166,6 +202,7 @@ $monthly_expense = $month_data['monthly_total'] ?? 0;
             .table-box {
                 overflow-x: auto;
             }
+
         }
 
     </style>
@@ -178,19 +215,28 @@ $monthly_expense = $month_data['monthly_total'] ?? 0;
 
     <h1>Daily Expense Tracker</h1>
 
+    <!-- Success Message -->
+
     <?php if (isset($_GET['success'])) { ?>
+
         <p class="success">
+
             <?php
             if ($_GET['success'] == 'added') {
                 echo "Expense Added Successfully!";
-            } elseif ($_GET['success'] == 'updated') {
+            }
+            elseif ($_GET['success'] == 'updated') {
                 echo "Expense Updated Successfully!";
-            } elseif ($_GET['success'] == 'deleted') {
+            }
+            elseif ($_GET['success'] == 'deleted') {
                 echo "Expense Deleted Successfully!";
             }
             ?>
+
         </p>
+
     <?php } ?>
+
 
     <!-- Add Expense Form -->
 
@@ -243,6 +289,7 @@ $monthly_expense = $month_data['monthly_total'] ?? 0;
 
     </div>
 
+
     <!-- Expense Summary -->
 
     <div class="summary">
@@ -269,7 +316,30 @@ $monthly_expense = $month_data['monthly_total'] ?? 0;
 
     </div>
 
-    <!-- Display Expense Records -->
+
+    <!-- Search Expense -->
+
+    <div class="form-box">
+
+        <h2>Search Expenses</h2>
+
+        <form method="GET" class="search-form">
+
+            <input type="text"
+                   name="search"
+                   placeholder="Search by title or category"
+                   value="<?php echo htmlspecialchars($search); ?>">
+
+            <button type="submit">Search</button>
+
+            <a href="index.php">Show All</a>
+
+        </form>
+
+    </div>
+
+
+    <!-- Expense Records -->
 
     <div class="table-box">
 
@@ -278,12 +348,14 @@ $monthly_expense = $month_data['monthly_total'] ?? 0;
         <table>
 
             <tr>
+
                 <th>ID</th>
                 <th>Title</th>
                 <th>Amount</th>
                 <th>Category</th>
                 <th>Date</th>
                 <th>Action</th>
+
             </tr>
 
             <?php if (mysqli_num_rows($result) > 0) { ?>
@@ -334,7 +406,11 @@ $monthly_expense = $month_data['monthly_total'] ?? 0;
             <?php } else { ?>
 
                 <tr>
-                    <td colspan="6">No Expenses Found</td>
+
+                    <td colspan="6">
+                        No Expenses Found
+                    </td>
+
                 </tr>
 
             <?php } ?>
