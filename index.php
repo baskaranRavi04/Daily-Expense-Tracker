@@ -1,260 +1,349 @@
-
 <?php
 include 'db.php';
 
-$message = "";
+// Add Expense
+if (isset($_POST['add'])) {
 
-if (isset($_POST['add_expense'])) {
-
-    $title = trim($_POST['title']);
+    $title = mysqli_real_escape_string($conn, $_POST['title']);
     $amount = $_POST['amount'];
-    $category = $_POST['category'];
+    $category = mysqli_real_escape_string($conn, $_POST['category']);
     $date = $_POST['expense_date'];
 
-    $categories = ['Food', 'Travel', 'Shopping', 'Bills', 'Other'];
+    $sql = "INSERT INTO expenses (title, amount, category, expense_date)
+            VALUES ('$title', '$amount', '$category', '$date')";
 
-    if (
-        $title !== "" &&
-        is_numeric($amount) &&
-        $amount > 0 &&
-        in_array($category, $categories) &&
-        $date !== ""
-    ) {
-
-        $stmt = mysqli_prepare(
-            $conn,
-            "INSERT INTO expenses (title, amount, category, expense_date)
-             VALUES (?, ?, ?, ?)"
-        );
-
-        mysqli_stmt_bind_param(
-            $stmt,
-            "sdss",
-            $title,
-            $amount,
-            $category,
-            $date
-        );
-
-        if (mysqli_stmt_execute($stmt)) {
-            $message = "Expense added successfully!";
-        } else {
-            $message = "Unable to add expense.";
-        }
-
-        mysqli_stmt_close($stmt);
-
-    } else {
-        $message = "Please enter valid expense details.";
+    if (mysqli_query($conn, $sql)) {
+        header("Location: index.php?success=added");
+        exit();
     }
 }
+
+// Fetch Expenses
+$result = mysqli_query($conn,
+    "SELECT * FROM expenses ORDER BY id DESC"
+);
+
+// Calculate Total Expenses
+$total_result = mysqli_query($conn,
+    "SELECT SUM(amount) AS total FROM expenses"
+);
+
+$total = mysqli_fetch_assoc($total_result);
+$total_expense = $total['total'] ?? 0;
+
+// Calculate Monthly Expenses
+$month_result = mysqli_query($conn,
+    "SELECT SUM(amount) AS monthly_total
+     FROM expenses
+     WHERE MONTH(expense_date) = MONTH(CURRENT_DATE())
+     AND YEAR(expense_date) = YEAR(CURRENT_DATE())"
+);
+
+$month_data = mysqli_fetch_assoc($month_result);
+$monthly_expense = $month_data['monthly_total'] ?? 0;
+
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>Daily Expense Tracker</title>
 
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: Arial, sans-serif;
-        }
 
         body {
-            background-color: #f4f6f9;
-            color: #333;
-        }
-
-        header {
-            background-color: #253858;
-            color: white;
-            padding: 25px;
-            text-align: center;
-        }
-
-        header h1 {
-            font-size: 28px;
-            margin-bottom: 8px;
-        }
-
-        header p {
-            font-size: 14px;
-            color: #dce4f2;
+            font-family: Arial, sans-serif;
+            background: #f2f5f9;
+            margin: 0;
+            padding: 20px;
         }
 
         .container {
-            width: 90%;
-            max-width: 650px;
-            margin: 40px auto;
+            width: 85%;
+            margin: auto;
         }
 
-        .form-card {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 3px 12px rgba(0,0,0,0.08);
-        }
-
-        .form-card h2 {
-            color: #253858;
-            margin-bottom: 25px;
+        h1 {
             text-align: center;
+            color: #263238;
         }
 
-        .form-group {
-            margin-bottom: 18px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: bold;
-            font-size: 14px;
+        .form-box, .table-box, .total-box {
+            background: white;
+            padding: 20px;
+            margin-top: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px #ddd;
         }
 
         input, select {
             width: 100%;
-            padding: 12px;
+            padding: 10px;
+            margin: 8px 0 15px;
+            box-sizing: border-box;
             border: 1px solid #ccc;
-            border-radius: 6px;
-            font-size: 15px;
-            outline: none;
-        }
-
-        input:focus, select:focus {
-            border-color: #253858;
+            border-radius: 5px;
         }
 
         button {
-            width: 100%;
-            padding: 13px;
-            background-color: #253858;
+            background: #2878d0;
             color: white;
             border: none;
-            border-radius: 6px;
-            font-size: 16px;
+            padding: 12px 20px;
+            border-radius: 5px;
             cursor: pointer;
         }
 
         button:hover {
-            background-color: #172b4d;
+            background: #145ca8;
         }
 
-        .message {
-            background-color: #e4f7e9;
-            color: #218838;
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+
+        th {
+            background: #2878d0;
+            color: white;
+        }
+
+        th, td {
             padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 20px;
+            text-align: center;
+            border: 1px solid #ddd;
+        }
+
+        .edit {
+            background: #168447;
+            color: white;
+            padding: 7px 12px;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+
+        .delete {
+            background: #e53935;
+            color: white;
+            padding: 7px 12px;
+            text-decoration: none;
+            border-radius: 4px;
+        }
+
+        .total-box {
+            text-align: center;
+            color: #168447;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        .success {
+            color: green;
             text-align: center;
         }
 
-        footer {
-            text-align: center;
-            padding: 20px;
-            color: #777;
-            font-size: 13px;
+        .summary {
+            display: flex;
+            gap: 20px;
         }
 
-        @media (max-width: 600px) {
+        .summary .total-box {
+            flex: 1;
+        }
+
+        @media(max-width: 700px) {
             .container {
-                width: 94%;
-                margin: 25px auto;
+                width: 100%;
             }
 
-            .form-card {
-                padding: 20px;
+            .summary {
+                flex-direction: column;
+                gap: 0;
+            }
+
+            .table-box {
+                overflow-x: auto;
             }
         }
+
     </style>
+
 </head>
 
 <body>
 
-    <header>
-        <h1>Daily Expense Tracker</h1>
-        <p>Manage your daily expenses easily</p>
-    </header>
+<div class="container">
 
-    <div class="container">
+    <h1>Daily Expense Tracker</h1>
 
-        <div class="form-card">
+    <?php if (isset($_GET['success'])) { ?>
+        <p class="success">
+            <?php
+            if ($_GET['success'] == 'added') {
+                echo "Expense Added Successfully!";
+            } elseif ($_GET['success'] == 'updated') {
+                echo "Expense Updated Successfully!";
+            } elseif ($_GET['success'] == 'deleted') {
+                echo "Expense Deleted Successfully!";
+            }
+            ?>
+        </p>
+    <?php } ?>
 
-            <h2>Add New Expense</h2>
+    <!-- Add Expense Form -->
 
-            <?php if ($message != "") { ?>
-                <div class="message">
-                    <?php echo htmlspecialchars($message); ?>
-                </div>
-            <?php } ?>
+    <div class="form-box">
 
-            <form method="POST">
+        <h2>Add New Expense</h2>
 
-                <div class="form-group">
-                    <label>Expense Title</label>
-                    <input
-                        type="text"
-                        name="title"
-                        placeholder="Enter expense title"
-                        maxlength="100"
-                        required
-                    >
-                </div>
+        <form method="POST">
 
-                <div class="form-group">
-                    <label>Amount (₹)</label>
-                    <input
-                        type="number"
-                        name="amount"
-                        placeholder="Enter amount"
-                        min="0.01"
-                        step="0.01"
-                        required
-                    >
-                </div>
+            <label>Expense Title</label>
 
-                <div class="form-group">
-                    <label>Category</label>
+            <input type="text"
+                   name="title"
+                   placeholder="Enter expense title"
+                   required>
 
-                    <select name="category" required>
-                        <option value="">Select Category</option>
-                        <option value="Food">Food</option>
-                        <option value="Travel">Travel</option>
-                        <option value="Shopping">Shopping</option>
-                        <option value="Bills">Bills</option>
-                        <option value="Other">Other</option>
-                    </select>
-                </div>
+            <label>Amount (₹)</label>
 
-                <div class="form-group">
-                    <label>Expense Date</label>
-                    <input
-                        type="date"
-                        name="expense_date"
-                        value="<?php echo date('Y-m-d'); ?>"
-                        required
-                    >
-                </div>
+            <input type="number"
+                   name="amount"
+                   placeholder="Enter amount"
+                   min="0.01"
+                   step="0.01"
+                   required>
 
-                <button type="submit" name="add_expense">
-                    + Add Expense
-                </button>
+            <label>Category</label>
 
-            </form>
+            <select name="category" required>
+
+                <option value="">Select Category</option>
+                <option value="Food">Food</option>
+                <option value="Travel">Travel</option>
+                <option value="Shopping">Shopping</option>
+                <option value="Education">Education</option>
+                <option value="Other">Other</option>
+
+            </select>
+
+            <label>Expense Date</label>
+
+            <input type="date"
+                   name="expense_date"
+                   required>
+
+            <button type="submit" name="add">
+                Add Expense
+            </button>
+
+        </form>
+
+    </div>
+
+    <!-- Expense Summary -->
+
+    <div class="summary">
+
+        <div class="total-box">
+
+            <h2>Total Expenses</h2>
+
+            <h3>
+                ₹<?php echo number_format($total_expense, 2); ?>
+            </h3>
+
+        </div>
+
+        <div class="total-box">
+
+            <h2>This Month's Expenses</h2>
+
+            <h3>
+                ₹<?php echo number_format($monthly_expense, 2); ?>
+            </h3>
 
         </div>
 
     </div>
 
-    <footer>
-        Daily Expense Tracker | PHP & MySQL Project
-    </footer>
+    <!-- Display Expense Records -->
+
+    <div class="table-box">
+
+        <h2>All Expenses</h2>
+
+        <table>
+
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Amount</th>
+                <th>Category</th>
+                <th>Date</th>
+                <th>Action</th>
+            </tr>
+
+            <?php if (mysqli_num_rows($result) > 0) { ?>
+
+                <?php while ($row = mysqli_fetch_assoc($result)) { ?>
+
+                    <tr>
+
+                        <td>
+                            <?php echo $row['id']; ?>
+                        </td>
+
+                        <td>
+                            <?php echo htmlspecialchars($row['title']); ?>
+                        </td>
+
+                        <td>
+                            ₹<?php echo number_format($row['amount'], 2); ?>
+                        </td>
+
+                        <td>
+                            <?php echo htmlspecialchars($row['category']); ?>
+                        </td>
+
+                        <td>
+                            <?php echo $row['expense_date']; ?>
+                        </td>
+
+                        <td>
+
+                            <a class="edit"
+                               href="edit.php?id=<?php echo $row['id']; ?>">
+                               Edit
+                            </a>
+
+                            <a class="delete"
+                               href="delete.php?id=<?php echo $row['id']; ?>"
+                               onclick="return confirm('Are you sure you want to delete this expense?');">
+                               Delete
+                            </a>
+
+                        </td>
+
+                    </tr>
+
+                <?php } ?>
+
+            <?php } else { ?>
+
+                <tr>
+                    <td colspan="6">No Expenses Found</td>
+                </tr>
+
+            <?php } ?>
+
+        </table>
+
+    </div>
+
+</div>
 
 </body>
 </html>
