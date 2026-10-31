@@ -58,6 +58,14 @@ $month_result = mysqli_query($conn,
 $month_data = mysqli_fetch_assoc($month_result);
 $monthly_expense = $month_data['monthly_total'] ?? 0;
 
+// Category-wise Expense Summary
+$category_result = mysqli_query($conn,
+    "SELECT category, SUM(amount) AS total
+     FROM expenses
+     GROUP BY category
+     ORDER BY total DESC"
+);
+
 ?>
 
 <!DOCTYPE html>
@@ -313,6 +321,50 @@ $monthly_expense = $month_data['monthly_total'] ?? 0;
             </h3>
 
         </div>
+
+    </div>
+
+
+    <!-- Category-wise Expense Summary -->
+
+    <div class="table-box">
+
+        <h2>Category-wise Expense Summary</h2>
+
+        <table>
+
+            <tr>
+                <th>Category</th>
+                <th>Total Amount</th>
+            </tr>
+
+            <?php if (mysqli_num_rows($category_result) > 0) { ?>
+
+                <?php while ($cat = mysqli_fetch_assoc($category_result)) { ?>
+
+                    <tr>
+
+                        <td>
+                            <?php echo htmlspecialchars($cat['category']); ?>
+                        </td>
+
+                        <td>
+                            ₹<?php echo number_format($cat['total'], 2); ?>
+                        </td>
+
+                    </tr>
+
+                <?php } ?>
+
+            <?php } else { ?>
+
+                <tr>
+                    <td colspan="2">No Expenses Found</td>
+                </tr>
+
+            <?php } ?>
+
+        </table>
 
     </div>
 
